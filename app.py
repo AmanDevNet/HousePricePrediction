@@ -18,24 +18,35 @@ def home():
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        # Get input values (keys must match the HTML 'name' fields)
-        med_inc = float(request.form['MedInc']) / 10000  # to scale
+        # Get input values
+        med_inc = float(request.form['MedInc']) / 10000  # Match your scaling
         house_age = float(request.form['HouseAge'])
-        avg_rooms = float(request.form['AveRooms'])
+        ave_rooms = float(request.form['AveRooms'])
+        model_choice = request.form.get('model', 'nn')  # Default to Neural Network (best MSE)
 
         # Prepare and scale input
-        input_data = np.array([[med_inc, house_age, avg_rooms]])
+        input_data = np.array([[med_inc, house_age, ave_rooms]])
         input_scaled = scaler.transform(input_data)
 
         # Make predictions
-        lr_pred = lr_model.predict(input_scaled)[0] * 1000
-        rf_pred = rf_model.predict(input_scaled)[0] * 1000
-        nn_pred = nn_model.predict(input_scaled)[0][0] * 1000
+        lr_pred = lr_model.predict(input_scaled)[0] * 1000  # $K
+        rf_pred = rf_model.predict(input_scaled)[0] * 1000  # $K
+        nn_pred = nn_model.predict(input_scaled, verbose=0)[0][0] * 1000  # $K
 
-        return render_template('index.html',
-                               lr_prediction=f"{lr_pred:,.2f}",
-                               rf_prediction=f"{rf_pred:,.2f}",
-                               nn_prediction=f"{nn_pred:,.2f}")
+        # Format predictions
+        predictions = {
+            'lr': f"{lr_pred:,.2f}",
+            'rf': f"{rf_pred:,.2f}",
+            'nn': f"{nn_pred:,.2f}"
+        }
+        selected_model = {'lr': 'Linear Regression', 'rf': 'Random Forest', 'nn': 'Neural Network'}[model_choice]
+
+        return render_template('index.html', 
+                              predictions=predictions, 
+                              selected_model=selected_model,
+                              med_inc=request.form['MedInc'],  # Pass raw input for display
+                              house_age=house_age,
+                              ave_rooms=ave_rooms)
     except Exception as e:
         return render_template('index.html', error=str(e))
 
